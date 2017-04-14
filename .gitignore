@@ -1,0 +1,4 @@
+*.pyc
+tensorflow/
+.DS_Store
+handle_data_alt.py

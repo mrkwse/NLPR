@@ -24,11 +24,17 @@ def load_data(data_file):
 
     input_text = []
     output_labels = []
+    meta = {'max_word_count': 0, 'max_string_length': 0}
 
     for child in root:
         sentence_data = []
         for sentence in child.findall('sentences/sentence/text'):
             sentence_data.append(sentence.text)
+
+            if len(sentence.text) > meta['max_string_length']:
+                meta['max_string_length'] = len(sentence.text)
+            if len(sentence.text.split(' ')) > meta['max_word_count']:
+                meta['max_word_count'] = len(sentence.text.split(' '))
 
         input_text.append(sentence_data)
 
@@ -44,20 +50,27 @@ def load_data(data_file):
 
         output_labels.append(label_data)
 
-    return [input_text, output_labels]
+    y = np.array(output_labels)
+
+    print y.shape
+
+    return [input_text, output_labels, meta]
 
 
-def binary_labels(output_labels, return_index=False):
+def binary_labels(output_labels, return_index=False, label_list=None):
     """
     Format label data to be binary arrays.
     """
 
-    label_list = []
+    # Populate label list if required, otherwise input is used (e.g. for
+    # evaluationd data to follow same format as training)
+    if label_list == None:
+        label_list = []
 
-    for element in output_labels:
-        for quality in element:
-            if quality[0] not in label_list:
-                label_list.append(quality[0])
+        for element in output_labels:
+            for quality in element:
+                if quality[0] not in label_list:
+                    label_list.append(quality[0])
 
     labels_binary = []
 
@@ -83,9 +96,9 @@ def binary_labels(output_labels, return_index=False):
     else:
         return labels_binary
 
-def binary_sentiment(output_labels, return_index=false):
+def binary_sentiment(output_labels, return_index=False):
 
-    sentiment_index = ['positive', 'negative', 'conflict']
+    sentiment_index = ['positive', 'conflict', 'negative']
 
     binary_sentiment = []
 
@@ -105,11 +118,66 @@ def binary_sentiment(output_labels, return_index=false):
     else:
         return binary_sentiment
 
+def binary_combined(output_labels, return_index=False):
+
+    binary_array = []
+
+    # Setup sentiment index and empty array
+    sentiment_index = ['positive', 'negative', 'other']
+
+    binary_labels = []
+
+    empty_sentiment = [0, 0, 0]
+
+    # Setup aspect index and empty array
+    label_list = []
+
+    for element in output_labels:
+        for quality in element:
+            if quality[0] not in label_list:
+                label_list.append(quality[0])
+
+    labels_binary = []
+
+    empty_label = []
+
+    for element in label_list:
+        empty_label.append(0)
+
+    combined_empty = [empty_label[:], empty_sentiment[:]]
+
+    for review in output_labels:
+        element = []
+
+        for aspect in review:
+            example = [empty_label[:], empty_sentiment[:]]
+
+            # Probably if/except these
+            example[0][label_list.index(aspect[0])] = 1
+            if aspect[1] == 'neutral' or 'conflict':
+                example[1][sentiment_index.index('other')] = 1
+            else:
+                example[1][sentiment_index.index(aspect[1])] = 1
+
+            element.append(example)
+
+        binary_array.append(element)
+
+
+    z = np.array(binary_array)
+
+    print z.shape
+    return binary_array
+
+
+
 # x, y = load_data(data_file)
 #
 # alt_labels(y)
 
+x,y,z = load_data(data_file)
 
+binary_combined(y)
 
 
 if 0:
