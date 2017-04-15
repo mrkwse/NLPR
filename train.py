@@ -11,7 +11,10 @@ from classification_cnn import ClassificationCNN
 
 embed_dim = 256
 filt_szs = [3,4,5]
-num_filt = 256
+num_filt = 82 # 256
+
+batch_size = 64
+num_epochs = 200
 
 training_data_path="/Users/mrkwse/Documents/University/NLPR/OA/Data/ABSA16_Laptops_Train_English_SB2.xml"
 evaluation_data_path="/Users/mrkwse/Documents/University/NLPR/OA/Data/EN_LAPT_SB2_TEST.xml.gold"
@@ -72,41 +75,42 @@ with tf.Graph().as_default():
         print("Saving to {}\n".format(out_dir))
 
         # Loss & accuracy
-        loss_summary = tf.scalar_summary("loss", cnn.loss)
-        accuracy_summary = tf.scalar_summary("accuracy", c.accuracy)
+        loss_summary = tf.summary.scalar("loss", cnn.loss)
+        accuracy_summary = tf.summary.scalar("accuracy", cnn.accuracy)
 
         # Training summaries
-        train_summary_op = tf.merge_summary([loss_summary, accuracy_summary])
-        train_summary_dir = os.path,join(out_dir, "summaries", "training")
-        train_summary_writer = tf.train.SummaryWriter(train_summary_dir, sess.graph_def)
+        train_summary_op = tf.summary.merge([loss_summary, accuracy_summary])
+        train_summary_dir = os.path.join(out_dir, "summaries", "training")
+        train_summary_writer = tf.summary.FileWriter(train_summary_dir, session.graph_def)
 
         # Evaulation summaries FIXME
-        eval_summary_op = tf.merge_summary([loss_summary, acc_summary])
+        eval_summary_op = tf.summary.merge([loss_summary, accuracy_summary])
         eval_summary_dir = os.path.join(out_dir, "summaries", "evaluation")
-        eval_summary_writer = tf.train.SummaryWriter(dev_summary_dir, sess.graph_def)
+        eval_summary_writer = tf.summary.FileWriter(eval_summary_dir, session.graph_def)
 
         # Checkpoint support
         checkpoint_dir = os.path.abspath(os.path.join(out_dir, "checkpoints"))
         checkpoint_prefix = os.path.join(checkpoint_dir, "model")
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
-        saver = tf.train.Saver(tf.all_variables())
+        saver = tf.train.Saver(tf.global_variables())
 
         # TODO: Store vocabulary?
 
-        sess.run(tf.initialize_all_variables())
+        session.run(tf.global_variables_initializer())
 
         def train_step(text_batch, label_batch):
             """
             Single training step
             """
             feed_dict = {
-                cnn.input_text: text_batch,
-                cnn.input_label: label_batch,
+                cnn.inputs: text_batch,
+                cnn.labels: label_batch,
                 cnn.dropout_keep_prob: 0.1 # best between 0.0 - 0.3
             }
 
-            _, step, summaries, loss, accuracy = sess.run(
+            # FIXME
+            _, step, summaries, loss, accuracy = session.run(
                 [train_op, global_step, train_summary_op, cnn.loss, cnn.accuracy],
                 feed_dict
             )
@@ -124,7 +128,7 @@ with tf.Graph().as_default():
                 cnn.dropout_keep_prob: 1.0  # Constant for evaluation
             }
 
-            step, summaires, loss, accuracy = sess.run(
+            step, summaires, loss, accuracy = session.run(
                 [global_step, eval_summary_op, cnn.loss, cnn.accuracy],
                 feed_dict
             )
@@ -134,7 +138,7 @@ with tf.Graph().as_default():
                 writer.add_summary(summaries, step)
 
         # I like trains FIXME
-        batches = data_helpers.batch_iter(
+        batches = handle_data.return_batches(
             zip(train_in, train_label),
             batch_size,
             num_epochs
@@ -147,11 +151,11 @@ with tf.Graph().as_default():
         for batch in batches:
             text_batch, label_batch = zip(*batch)
             train_step(text_batch, label_batch)
-            current_step = tf.train.global_step(sess, global_step)
+            current_step = tf.train.global_step(session, global_step)
             if current_step % evaluate_number == 0:
                 print("\nEvaluation:")
                 evaluation_step(eval_in, eval_label, writer=eval_summary_writer)
                 print("")
             if current_step % checkpoint_number == 0:
-                path = saver.save(sess, checkpoint_prefix, global_step=current_step)
+                path = saver.save(session, checkpoint_prefix, global_step=current_step)
                 print("Saved model checkpoint to {}\n".format(path))

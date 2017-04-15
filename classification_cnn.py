@@ -9,10 +9,11 @@ class ClassificationCNN(object):
     def __init__(self, input_dimensions, num_classes, vocabulary_size, embedding_size,
                  num_filters, filter_sizes):
 
-        # Placholders for input and lavels
-        self.inputs = tf.placeholder(tf.int32, shape=[input_dimensions], name='input_text')
-        self.labels = tf.placeholder(tf.float32, shape=[num_classes[0]], name='output_labels')
+        # Placholders for input and labels (None allows for multiple inputs)
+        self.inputs = tf.placeholder(tf.int32, shape=[None, input_dimensions], name='input_text')
+        self.labels = tf.placeholder(tf.float32, shape=[None, num_classes[0]], name='output_labels')
         #~ Dropout?
+        self.dropout_keep_prob = tf.placeholder(tf.float32, name="dropout_keep_prob")
 
 
         with tf.device('/cpu:0'), tf.name_scope("embedding"):
@@ -36,7 +37,7 @@ class ClassificationCNN(object):
 
             self.conv_weights = tf.Variable(
                 tf.truncated_normal(
-                    [vocabulary_size, embedding_size],
+                    filter_shape,
                     stddev=1.0 / math.sqrt(embedding_size), # Possibly fix value§
                     name='weights'
                 )
@@ -46,13 +47,19 @@ class ClassificationCNN(object):
             self.conv_biases = tf.Variable(tf.zeros([num_filters])) # possibly replace with constant
             # self.nce_bias = tf.Variable(tf.constant)
 
-            # Convolution layer
+            if i == 1:
+                reuse_value = None
+            else:
+                reuse_value = True
+            # Convolution layer
             # conv = tf.layers.conv2d(
             #     inputs = self.embedded_chars_expanded,
-            #     filters = self.conv_weights,
+            #     filters = num_filters,
+            #     kernel_size = [2, 3],   # TODO fix this to something logical FIXME
             #     padding = "VALID",
-            #     strides = [1,1,1,1],
+            #     strides = [1,1],
             #     name = "convolution",
+            #     reuse = True,   # May need to set to false
             #     activation=tf.nn.relu
             # )
             conv = tf.nn.conv2d(
@@ -77,24 +84,30 @@ class ClassificationCNN(object):
             # TODO: Concatenate results of multiple convolutions
 
         # Concatenate
-        total_filter = num_filters * len(filter_sizes)
-        self.h_pool = tf.concat(3, pooled_outputs)
-        self.h_pool_flat = tf.reshape(self.h_pool, [-1, total_filter])
+        total_filters = num_filters * len(filter_sizes)
+        self.h_pool = tf.concat(pooled_outputs, 3)
+        self.h_pool_flat = tf.reshape(self.h_pool, [-1, total_filters])
 
         # Dropout
         with tf.name_scope("dropout"):
             self.h_drop = tf.nn.dropout(self.h_pool_flat, self.dropout_keep_prob)
 
         with tf.name_scope("output"):
-            weights = tf.Variable(
+            #FIXME
+            # weights = tf.get_variable(
+            #     "self.conv_weights",
+            #     tf.truncated_normal([total_filters, num_classes[0]], stddev=0.1), name="c_filter")
+            weights = tf.get_variable(
                 "self.conv_weights",
-                tf.truncated_normal([num_filters_total, num_classes], stddev=0.1), name="c_filter")
-            b = tf.Variable(tf.constant(0.1, shape=[num_classes]), name="b")
-            self.scores = tf.nn.xw_plus_b(self.h_drop, weights, biases, name="scores")
+                shape = [total_filters, num_classes[0]],
+                initializer = tf.contrib.layers.xavier_initializer()
+            )
+            b = tf.Variable(tf.constant(0.1, shape=[num_classes[0]]), name="b")
+            self.scores = tf.nn.xw_plus_b(self.h_drop, weights, self.conv_biases, name="scores")
             self.predictions = tf.argmax(self.scores, 1, name="predictions")
 
 
-        with tf.name_Scope("loss"):
+        with tf.name_scope("loss"):
             losses = tf.nn.softmax_cross_entropy_with_logits(
                 logits = self.scores,
                 labels = self.labels
