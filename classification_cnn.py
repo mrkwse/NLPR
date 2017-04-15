@@ -6,8 +6,11 @@ import math
 
 class ClassificationCNN(object):
 
-    def __init__(self, input_dimensions, num_classes, vocabulary_size, embedding_size,
-                 num_filters, filter_sizes):
+    def __init__(self, input_count, input_dimensions, num_classes,
+                 vocabulary_size, embedding_size, num_filters, filter_sizes):
+
+# : [?,?,73,256,1], [3,256,1,82].
+
 
         # Placholders for input and labels (None allows for multiple inputs)
         self.inputs = tf.placeholder(tf.int32, shape=[None, input_dimensions], name='input_text')

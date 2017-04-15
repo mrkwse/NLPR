@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import xml.etree.ElementTree as ET
 import numpy as np
 
@@ -50,9 +52,9 @@ def load_data(data_file):
 
         output_labels.append(label_data)
 
-    y = np.array(output_labels)
+    # TODO: Bin y = np.array(output_labels)
 
-    print y.shape
+    # print y.shape
 
     return [input_text, output_labels, meta]
 
@@ -65,7 +67,7 @@ def binary_labels(output_labels, return_index=False, label_list=None):
     # Populate label list if required, otherwise input is used (e.g. for
     # evaluationd data to follow same format as training)
     if label_list == None:
-        label_list = []
+        label_list = ["OTHER#OTHER"]
 
         for element in output_labels:
             for quality in element:
@@ -79,22 +81,24 @@ def binary_labels(output_labels, return_index=False, label_list=None):
     for element in label_list:
         empty_label.append(0)
 
+
+    # TODO: Array of single aspect variable arrays.
     for element in output_labels:
         labels_binary.append(empty_label[:])
         for quality in element:
             if quality[0] in label_list:
                 labels_binary[-1][label_list.index(quality[0])] = 1
             else:
-                raise Exception('Missing label in list')
+                labels_binary[-1][label_list.index("OTHER#OTHER")] = 1
                 # label_index[quality[0]] = label_index['max'] + 1
                 # label_index['max'] += 1
                 # labels_binary[-1][label_index[quality[0]]] = 1
 
     if return_index:
         # label list acts as a lookup incase of printing classification results
-        return labels_binary, label_list
+        return np.array(labels_binary), label_list
     else:
-        return labels_binary
+        return np.array(labels_binary)
 
 def binary_sentiment(output_labels, return_index=False):
 
@@ -114,9 +118,9 @@ def binary_sentiment(output_labels, return_index=False):
                 raise Exception('Mysterious 4th sentiment class')
 
     if return_index:
-        return binary_sentiment, sentiment_index
+        return np.array(binary_sentiment), sentiment_index
     else:
-        return binary_sentiment
+        return np.array(binary_sentiment)
 
 def binary_combined(output_labels, return_index=False):
 
@@ -166,20 +170,37 @@ def binary_combined(output_labels, return_index=False):
 
     z = np.array(binary_array)
 
-    print z.shape
-    return binary_array
+    # print z.shape
+    return np.array(binary_array)
 
+def return_batches(data, batch_size, num_epochs, shuffle=True):
+    data = np.array(data)
+    data_size = len(data)
+    num_batches_per_epoch = int((len(data)-1)/batch_size) + 1
+
+    for epoch in range(num_epochs):
+
+        if shuffle:
+            shuffle_indices = np.random.permutation(np.arange(data_size))
+            shuffled_data = data[shuffle_indices]
+        else:
+            shuffled_data = data
+
+        for batch_num in range(num_batches_per_epoch):
+            start_index = batch_num * batch_size
+            end_index = min((batch_num + 1) * batch_size, data_size)
+            yield shuffled_data[start_index:end_index]
 
 
 # x, y = load_data(data_file)
 #
 # alt_labels(y)
 
-x,y,z = load_data(data_file)
+# x,y,z = load_data(data_file)
+#
+# binary_combined(y)
 
-binary_combined(y)
-
-
+### FIXME
 if 0:
     print(input_text)
 

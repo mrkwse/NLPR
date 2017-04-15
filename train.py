@@ -7,6 +7,7 @@ import time
 import handle_data
 from tensorflow.contrib import learn
 from classification_cnn import ClassificationCNN
+import datetime
 
 
 embed_dim = 256
@@ -50,11 +51,13 @@ eval_in = np.array(eval_in)
 
 with tf.Graph().as_default():
     session_config = tf.ConfigProto(
-        allow_soft_placement=False
+        allow_soft_placement=True,
+        log_device_placement=True
     )
     session = tf.Session(config=session_config)
     with session.as_default():
         cnn = ClassificationCNN(
+            input_count = train_in.shape[0],
             input_dimensions = train_in[0].shape[1],
             num_classes = [len(train_label[0]), len(train_label[1])], # consider np.array.shape[1]
             vocabulary_size = len(vocab_processor.vocabulary_),
@@ -104,18 +107,18 @@ with tf.Graph().as_default():
             Single training step
             """
             feed_dict = {
-                cnn.inputs: text_batch,
-                cnn.labels: label_batch,
+                cnn.inputs: text_batch[0],  # FIXME: Should input entire set of reviews, not set of sentences in first review
+                cnn.labels: label_batch[:len(text_batch[0])],
                 cnn.dropout_keep_prob: 0.1 # best between 0.0 - 0.3
             }
 
             # FIXME
             _, step, summaries, loss, accuracy = session.run(
-                [train_op, global_step, train_summary_op, cnn.loss, cnn.accuracy],
-                feed_dict
+                fetches=[train_op, global_step, train_summary_op, cnn.loss, cnn.accuracy],
+                feed_dict=feed_dict
             )
             time_str = datetime.datetime.now().isoformat()
-            print("{}: step {}, loss {:g}, acc {:g}".format(timestr, step, loss, accuracy))
+            print("{}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
             train_summary_writer.add_summary(summaries, step)
 
         def evaluation_step(text_batch, label_batch, writer=None):
@@ -123,8 +126,8 @@ with tf.Graph().as_default():
             Evaluate model on evaluation data
             """
             feed_dict = {
-                cnn.input_text: text_batch,
-                cnn.input_label: label_batch,
+                cnn.inputs: text_batch[0],
+                cnn.labels: label_batch[:len(text_batch[0])],
                 cnn.dropout_keep_prob: 1.0  # Constant for evaluation
             }
 
@@ -133,7 +136,7 @@ with tf.Graph().as_default():
                 feed_dict
             )
             time_str = datetime.datetime.now().isoformat()
-            print("{}: step {}, loss {:g}, acc {:g}".format(timestr, step, loss, accuracy))
+            print("{}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
             if writer:
                 writer.add_summary(summaries, step)
 
