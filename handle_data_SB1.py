@@ -155,7 +155,7 @@ def binary_combined(output_labels, return_index=False):
         binary_array.append(element)
 
 
-    z = np.array(binary_array)
+    # z = np.array(binary_array)
 
     # print z.shape
     return np.array(binary_array)
@@ -183,14 +183,14 @@ def return_batches(data, batch_size, num_epochs, shuffle=True):
 #
 # alt_labels(y)
 
-x,y,z = load_data(data_file)
-
-yi = binary_labels(y)
-
-# print yi
-print len(x)
-print len(y)
-print len(yi)
+# x,y,z = load_data(data_file)
+#
+# yi = binary_labels(y)
+#
+# # print yi
+# print len(x)
+# print len(y)
+# print len(yi)
 
 
 #

@@ -6,7 +6,7 @@ import math
 
 class ClassificationCNN(object):
 
-    def __init__(self, input_count, input_dimensions, num_classes,
+    def __init__(self, input_dimensions, num_classes,
                  vocabulary_size, embedding_size, num_filters, filter_sizes):
 
 # : [?,?,73,256,1], [3,256,1,82].
@@ -105,8 +105,8 @@ class ClassificationCNN(object):
                 shape = [total_filters, num_classes[0]],
                 initializer = tf.contrib.layers.xavier_initializer()
             )
-            b = tf.Variable(tf.constant(0.1, shape=[num_classes[0]]), name="b")
-            self.scores = tf.nn.xw_plus_b(self.h_drop, weights, self.conv_biases, name="scores")
+            biases = tf.Variable(tf.constant(0.1, shape=[num_classes[0]]), name="b")
+            self.scores = tf.nn.xw_plus_b(self.h_drop, weights, biases, name="scores")
             self.predictions = tf.argmax(self.scores, 1, name="predictions")
 
 
