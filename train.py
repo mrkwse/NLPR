@@ -10,11 +10,13 @@ import datetime
 
 
 embed_dim = 256
-filt_szs = [3,4,5]
+aspect_filter_dimensions = [2,3,4]  # 3 close
 num_filt = 256 # 256
 
 batch_size = 64
 num_epochs = 200
+
+threshold_val = 8
 
 SB2 = False
 if SB2:
@@ -27,7 +29,7 @@ else:
     import handle_data_SB1 as handle_data
 
     training_data_path="/Users/mrkwse/Documents/University/NLPR/OA/Data/ABSA16_Laptops_Train_SB1_v2.xml"
-    evaluation_data_path="/Users/mrkwse/Documents/University/NLPR/OA/Data/ABSA16_Laptops_Train_SB1_v2.xml"
+    evaluation_data_path="/Users/mrkwse/Documents/University/NLPR/OA/Data/EN_LAPT_SB1_TEST_.xml.gold"
 
 # Load data
 text_train, label_train, train_meta = handle_data.load_data(training_data_path)
@@ -76,11 +78,12 @@ with tf.Graph().as_default():
         cnn = ClassificationCNN(
             # input_count = train_in.shape[0],
             input_dimensions = train_in.shape[1],
-            num_classes = [len(train_label[0]), len(train_label[1])], # consider np.array.shape[1]
+            num_classes = train_label.shape[1], # consider np.array.shape[1]
             vocabulary_size = len(vocab_processor.vocabulary_),
             embedding_size = embed_dim,
-            filter_sizes = filt_szs,
-            num_filters = num_filt
+            filter_sizes = aspect_filter_dimensions,
+            num_filters = num_filt,
+            batch_size = batch_size
         )
 
         global_step = tf.Variable(0, name="global_step", trainable=False)
@@ -119,33 +122,39 @@ with tf.Graph().as_default():
 
         session.run(tf.global_variables_initializer())
 
-        def train_step(text_batch, label_batch):
+        def train_step(text_batch, label_batch, thresh):
             """
             Single training step
             """
             feed_dict = {
                 cnn.inputs: text_batch,  # FIXME: Should input entire set of reviews, not set of sentences in first review
                 cnn.labels: label_batch,
-                cnn.dropout_keep_prob: 0.1 # best between 0.0 - 0.3
+                cnn.dropout_keep_prob: 0.1, # best between 0.0 - 0.3
+                cnn.threshold: thresh
             }
 
             # FIXME
-            _, step, summaries, loss, accuracy = session.run(
-                fetches=[train_op, global_step, train_summary_op, cnn.loss, cnn.accuracy],
+            _, step, summaries, loss, accuracy, scores, labels, predictions, embedded_chars_expanded = session.run(
+                fetches=[train_op, global_step, train_summary_op, cnn.loss, cnn.accuracy, cnn.scores, cnn.labels, cnn.predictions, cnn.embedded_chars_expanded],
                 feed_dict=feed_dict
             )
+
+            # print scores[0]
+            # print h_pool, h_drop[0]
+
             time_str = datetime.datetime.now().isoformat()
             print("{}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
             train_summary_writer.add_summary(summaries, step)
 
-        def evaluation_step(text_batch, label_batch, writer=None):
+        def evaluation_step(text_batch, label_batch, thresh, writer=None):
             """
             Evaluate model on evaluation data
             """
             feed_dict = {
                 cnn.inputs: text_batch,
                 cnn.labels: label_batch,
-                cnn.dropout_keep_prob: 1.0  # Constant for evaluation
+                cnn.dropout_keep_prob: 1.0,  # Constant for evaluation
+                cnn.threshold: thresh
             }
 
             step, summaries, loss, accuracy = session.run(
@@ -170,11 +179,13 @@ with tf.Graph().as_default():
         # For each batch in training loop
         for batch in batches:
             text_batch, label_batch = zip(*batch)
-            train_step(text_batch, label_batch)
+            thresh = np.full((len(label_batch), train_label.shape[1]), threshold_val)
+            train_step(text_batch, label_batch, thresh)
             current_step = tf.train.global_step(session, global_step)
             if current_step % evaluate_number == 0:
                 print("\nEvaluation:")
-                evaluation_step(eval_in, eval_label, writer=eval_summary_writer)
+                thresh = np.full((len(eval_label), train_label.shape[1]), threshold_val)
+                evaluation_step(eval_in, eval_label, thresh, writer=eval_summary_writer)
                 print("")
             if current_step % checkpoint_number == 0:
                 path = saver.save(session, checkpoint_prefix, global_step=current_step)

@@ -2,6 +2,11 @@
 
 import xml.etree.ElementTree as ET
 import numpy as np
+import itertools
+import collections
+import string
+import unicodedata
+import sys
 
 # Fix absolute path
 data_file = '/Users/mrkwse/Documents/University/NLPR/OA/Data/ABSA16_Laptops_Train_SB1_v2.xml'
@@ -42,6 +47,35 @@ def load_data(data_file):
 
 
     return [input_text, output_labels, meta]
+
+def remove_outlying_labels(output_labels):
+
+    # pruned_labels = output_labels
+
+    label_list = {"OTHER#OTHER": 0}
+
+    for element in output_labels:
+        for quality in element:
+            if quality[0] in label_list:
+                label_list[quality[0]] += 1
+            else:
+                label_list[quality[0]] = 1
+
+
+
+    # print label_list
+
+    xx = 0
+
+    while xx < len(output_labels):
+        yy = 0
+        while yy < len(output_labels[xx]):
+            if label_list[output_labels[xx][yy][0]] < 20:
+                output_labels[xx][yy][0] = "OTHER#OTHER"
+            yy += 1
+        xx += 1
+
+    return output_labels
 
 
 def binary_labels(output_labels, return_index=False, label_list=None):
@@ -160,6 +194,9 @@ def binary_combined(output_labels, return_index=False):
     # print z.shape
     return np.array(binary_array)
 
+# def binary_eval(output_labels, label_list):
+
+
 def return_batches(data, batch_size, num_epochs, shuffle=True):
     data = np.array(data)
     data_size = len(data)
@@ -179,11 +216,65 @@ def return_batches(data, batch_size, num_epochs, shuffle=True):
             yield shuffled_data[start_index:end_index]
 
 
+# http://stackoverflow.com/questions/34293875/how-to-remove-punctuation-marks-from-a-string-in-python-3-x-using-translate
+translator = str.maketrans('','', string.punctuation)
+
+def word_lists(text):
+    output = []
+
+    for sentence in text:
+        sentence = sentence.replace(u'\xa0', u' ')
+        output.append(sentence.translate(translator).split(' '))
+
+    return output
+
+def vocabulary_transform(text, max_length=None):
+
+    words = word_lists(text)
+
+    word_counts = collections.Counter(itertools.chain(*words))
+
+    vocabulary = [x[0] for x in word_counts.most_common()]
+    vocabulary = list(sorted(vocabulary))
+    vocabulary.append('</NULL>')
+
+    # vocabulary = {x: i for i, x in enumerate(vocabulary_inv)}
+    #
+    # max_i = max(vocabulary[x] for x in vocabulary)
+    # vocabulary['</NULL>'] =  max_i + 1
+    return [vocabulary]
+
+# FIXME TODO FIXME TODO FIXME TODO PADDING
+def build_input_data(sentences, vocabulary, meta, pad=True):
+    training_data = []
+    for sentence in sentences:
+        sen_data = []
+        sentence = sentence.replace(u'\xa0', u' ')
+        sentence = sentence.translate(translator)
+        for word in sentence.split(' '):
+            if word in vocabulary:
+                sen_data.append(vocabulary.index(word))
+            else:
+                sen_data.append(vocabulary.index('</NULL>'))
+        yy = len(sentence.split(' '))
+        while yy < meta['max_word_count']:
+            sen_data.append(vocabulary.index('</NULL>'))
+            yy += 1
+        training_data.append(sen_data)
+
+    # training_data = np.array([[vocabulary[word] for word in sentence] for sentence in sentences])
+
+    return np.array(training_data)
+
 # x, y = load_data(data_file)
 #
 # alt_labels(y)
 
 # x,y,z = load_data(data_file)
+
+# print y
+
+# print remove_outlying_labels(y)
 #
 # yi = binary_labels(y)
 #
@@ -197,24 +288,24 @@ def return_batches(data, batch_size, num_epochs, shuffle=True):
 # binary_combined(y)
 
 ### FIXME
-if 0:
-    print(input_text)
-
-    print(output_labels)
-
-    print(count_label)
-    print(count_text)
-
-    print(max_length)
-
-
-    for key, value in sorted(label_count.iteritems(), key=lambda (k,v): (v,k)):
-        print "%s: %s" % (key, value)
-
-
-    for key, value in sorted(cat_count.iteritems(), key=lambda (k,v): (v,k)):
-        print "%s: %s" % (key, value)
-
-
-    for key, value in sorted(sub_type.iteritems(), key=lambda (k,v): (v,k)):
-        print "%s: %s" % (key, value)
+# if 0:
+#     print(input_text)
+#
+#     print(output_labels)
+#
+#     print(count_label)
+#     print(count_text)
+#
+#     print(max_length)
+#
+#
+#     for key, value in sorted(label_count.iteritems(), key=lambda (k,v): (v,k)):
+#         print "%s: %s" % (key, value)
+#
+#
+#     for key, value in sorted(cat_count.iteritems(), key=lambda (k,v): (v,k)):
+#         print "%s: %s" % (key, value)
+#
+#
+#     for key, value in sorted(sub_type.iteritems(), key=lambda (k,v): (v,k)):
+#         print "%s: %s" % (key, value)
