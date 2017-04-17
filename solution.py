@@ -3,7 +3,7 @@ from keras.models import Model
 import keras.preprocessing.text as text
 import os
 import numpy as np
-import handle_data_SB1 as handle_data
+import preprocessing
 
 vocab_size = 100
 embed_dim = 50
@@ -17,16 +17,17 @@ training_data_path = os.environ['TRAIN_PATH'] #/Users/mrkwse/Documents/Universit
 evaluation_data_path = os.environ['EVAL_PATH'] #/Users/mrkwse/Documents/University/NLPR/OA/Data/EN_LAPT_SB1_TEST_.xml.gold
 
 print('Loading data...')
-text_train, label_train, train_meta = handle_data.load_data(training_data_path)
-text_eval, label_eval, eval_meta = handle_data.load_data(evaluation_data_path)
+text_train, label_train, train_meta = preprocessing.load_data(training_data_path)
+text_eval, label_eval, eval_meta = preprocessing.load_data(evaluation_data_path)
 
 combined_text = text_train + text_eval
 
 print('Building vocabulary...')
-vocabulary = handle_data.vocabulary_transform(combined_text)
+vocabulary = preprocessing.vocabulary_transform(combined_text)
+print('Vocabulary size' + str(len(vocabulary)))
 
-train_label, label_index = handle_data.binary_labels(label_train, return_index=True)
-eval_label = handle_data.binary_labels(label_eval, label_list = label_index)
+train_label, label_index = preprocessing.binary_labels(label_train, return_index=True)
+eval_label = preprocessing.binary_labels(label_eval, label_list = label_index)
 
 tokenizer = text.Tokenizer(num_words=train_meta['max_word_count'])
 # tokenizer = text.Tokenizer()
@@ -36,8 +37,8 @@ tokenizer.fit_on_texts(text_train)
 # train_in = tokenizer.texts_to_sequences(text_train)
 # eval_in = tokenizer.texts_to_sequences(text_eval)
 
-training_inputs = handle_data.build_input_data(text_train, vocabulary[0], train_meta)
-evaluation_inputs = handle_data.build_input_data(text_eval, vocabulary[0], train_meta)
+training_inputs = preprocessing.build_input_data(text_train, vocabulary, train_meta)
+evaluation_inputs = preprocessing.build_input_data(text_eval, vocabulary, train_meta)
 
 print('Preprocessing complete.')
 
@@ -108,7 +109,7 @@ model.fit(training_inputs, train_label, epochs = num_epochs, batch_size = batch_
 #     """
 
 
-# batches = handle_data.return_batches(
+# batches = preprocessing.return_batches(
 #     zip(train_in, train_label),
 #     batch_size,
 #     num_epochs
