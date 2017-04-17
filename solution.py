@@ -6,7 +6,7 @@ import os
 import time
 import numpy as np
 import preprocessing
-
+import prediction_tools as predict
 
 embed_dim = 50
 num_filters = 256
@@ -25,6 +25,8 @@ text_eval, label_eval, eval_meta = preprocessing.load_data(evaluation_data_path)
 
 combined_text = text_train + text_eval
 
+label_sentiment_train = preprocessing.binary_sentiment(label_train)
+
 print('Building vocabulary...')
 vocabulary, vocabulary_inv = preprocessing.vocabulary_transform(combined_text)
 print('Vocabulary size: ' + str(len(vocabulary)))
@@ -39,7 +41,13 @@ eval_label = preprocessing.binary_labels(label_eval, label_list = label_index)
 training_inputs = preprocessing.build_input_data(text_train, vocabulary, train_meta)
 evaluation_inputs = preprocessing.build_input_data(text_eval, vocabulary, train_meta)
 
-print(training_inputs.shape)
+training_labels_binary = preprocessing.binary_combined(label_train, label_index)
+train_binary_sentiment, train_binary_sentiment_expanded, train_int_pairs, train_int_pairs_expanded = preprocessing.binary_to_int(training_labels_binary)
+
+evaluation_labels_binary = preprocessing.binary_combined(label_eval, label_index)
+eval_binary_sentiment, eval_binary_sentiment_expanded, eval_int_pairs, eval_int_pairs_expanded = preprocessing.binary_to_int(evaluation_labels_binary)
+
+# print(training_inputs.shape)
 print('Preprocessing complete.')
 
 
@@ -108,71 +116,55 @@ print('Training aspect model...')
 aspect_model.fit(training_inputs, train_label, epochs = num_epochs, batch_size = batch_size, callbacks=[checkpoints, board], validation_data=(evaluation_inputs, eval_label))
 
 train_predictions = aspect_model.predict(training_inputs, batch_size = batch_size)
+evaluation_predictions = aspect_model.predict(evaluation_inputs, batch_size = batch_size)
 
-predicted_classes = []
+
 true_treshold = 0.5
 
-for prediction in train_predictions:
-    class_no = 0
-    predicted = []
-    for prob in prediction:
-        if prob > true_treshold:
-            predicted.append(class_no)
-        class_no += 1
-    predicted_classes.append(predicted)
+train_classes_i = predict.predict_classes(train_predictions, true_treshold)
+eval_classes_i = predict.predict_classes(evaluation_predictions, true_treshold)
 
 
-# Append aspects to text representations for sentiment polarity.
-predicted_aspect_text_in = []
-sentence_no = 0
-for sentence in predicted_classes:
-    # predicted_aspect_text_in.append(training_inputs[sentence_no][:])
-    if len(sentence) == 0:
-        predicted_aspect_text_in.append(np.append(training_inputs[sentence_no], 0))
-    for label in sentence:
-        predicted_aspect_text_in.append(np.append(training_inputs[sentence_no], label))
-    # print(predicted_aspect_text_in[-1])
-    sentence_no += 0
+predicted_aspect_train_in = predict.add_class_to_text(train_classes_i, training_inputs)
+predicted_aspect_eval_in = predict.add_class_to_text(eval_classes_i, evaluation_inputs)
 
-predicted_aspect_text_in = np.array(predicted_aspect_text_in)
 
-# for i, filter_size in enumerate(sentiment_filter_dimensions):
-#     filter_shape = [filter_size, embed_dim, 1, num_filters]
-#
-#     aspect_conv = layers.convolutional.Conv2D(
-#         filters = num_filters,
-#         kernel_size = (filter_size,embed_dim),
-#         strides = (1,1),
-#         padding = 'valid',
-#         name = "sentiment_conv_" + str(i)
-#     )(reshape)
-#
-#
-#     aspect_pool = layers.pooling.MaxPooling2D(
-#         pool_size = (predicted_aspect_text_in.shape[1] - filter_size + 1, 1),
-#         strides = (1,1),
-#         padding = 'valid',
-#         name = 'sentiment_pool_' + str(i),
-#         data_format = "channels_last"
-#     )(aspect_conv)
-#
-#     pooled_aspect_outputs.append(aspect_pool)
-#
-# combined_pool = layers.Concatenate(axis=1)(pooled_aspect_outputs)
-# flat = layers.Flatten()(combined_pool)
-#
-# h_drop = layers.Dropout(rate=dropout_keep_prob, name="dropout")(flat)
-#
-# aspect_output = layers.Dense(train_label.shape[1], activation='sigmoid', name='main_output')(h_drop)
-#
-# aspect_model = Model(inputs=inputs, outputs=aspect_output)
+predicted_aspect_train_in = np.array(predicted_aspect_train_in)
 
-actual_classes = []
-for sentence in train_label:
-    # http://stackoverflow.com/a/6294205/3597964
-    actual_classes.append([i for i, x in enumerate(sentence) if x == 1])
+for i, filter_size in enumerate(sentiment_filter_dimensions):
+    filter_shape = [filter_size, embed_dim, 1, num_filters]
 
-print(predicted_aspect_text_in.shape)
-# print(predicted_classes)
-# print(actual_classes)
-# print(predicted_aspect_text_in)
+    aspect_conv = layers.convolutional.Conv2D(
+        filters = num_filters,
+        kernel_size = (filter_size,embed_dim),
+        strides = (1,1),
+        padding = 'valid',
+        name = "sentiment_conv_" + str(i)
+    )(reshape)
+
+
+    aspect_pool = layers.pooling.MaxPooling2D(
+        pool_size = (predicted_aspect_train_in.shape[1] - filter_size + 1, 1),
+        strides = (1,1),
+        padding = 'valid',
+        name = 'sentiment_pool_' + str(i),
+        data_format = "channels_last"
+    )(aspect_conv)
+
+    pooled_aspect_outputs.append(aspect_pool)
+
+combined_pool = layers.Concatenate(axis=1)(pooled_aspect_outputs)
+flat = layers.Flatten()(combined_pool)
+
+h_drop = layers.Dropout(rate=dropout_keep_prob, name="dropout")(flat)
+
+aspect_output = layers.Dense(train_label.shape[1], activation='sigmoid', name='main_output')(h_drop)
+
+aspect_model = Model(inputs=inputs, outputs=aspect_output)
+
+# actual_classes = []
+# for sentence in train_label:
+#     # http://stackoverflow.com/a/6294205/3597964
+#     actual_classes.append([i for i, x in enumerate(sentence) if x == 1])
+
+# print(predicted_aspect_text_in.shape)
