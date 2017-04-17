@@ -1,3 +1,4 @@
+import numpy as np
 
 def predict_classes(predicted_values, true_treshold=0.5):
 
@@ -15,18 +16,29 @@ def predict_classes(predicted_values, true_treshold=0.5):
     return predicted_classes
 
 
-def add_class_to_text(predicted_classes, text_input):
+def add_class_to_text(predicted_classes, text_input, aspect_counts):
 
     # Append aspects to text representations for sentiment polarity.
     predicted_aspect_text_in = []
     sentence_no = 0
-    for sentence in predicted_classes:
-        # predicted_aspect_text_in.append(training_inputs[sentence_no][:])
-        if len(sentence) == 0:
-            predicted_aspect_text_in.append(np.append(text_input[sentence_no], 0))
-        for label in sentence:
-            predicted_aspect_text_in.append(np.append(text_input[sentence_no], label))
-        # print(predicted_aspect_text_in[-1])
-        sentence_no += 0
+    while sentence_no < len(predicted_classes):
+        aspect = 0
+        while aspect < aspect_counts[sentence_no]:
+            if len(predicted_classes[sentence_no]) == 0:
+                predicted_aspect_text_in.append(np.append(text_input[sentence_no], 0))
+            else:
+                if len(predicted_classes[sentence_no]) < aspect_counts[sentence_no]:
+                    predicted_aspect_text_in.append(np.append(text_input[sentence_no], 0))
+                else:
+                    predicted_aspect_text_in.append(np.append(text_input[sentence_no], predicted_classes[sentence_no][aspect]))
+            aspect += 1
+        sentence_no += 1
 
-        return predicted_aspect_text_in
+    # for sentence in predicted_classes:
+    #     if len(sentence) == 0:
+    #         predicted_aspect_text_in.append(np.append(text_input[sentence_no], 0))
+    #     for label in sentence:
+    #         predicted_aspect_text_in.append(np.append(text_input[sentence_no], label))
+    #     sentence_no += 0
+
+    return predicted_aspect_text_in

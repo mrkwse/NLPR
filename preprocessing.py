@@ -328,19 +328,19 @@ def binary_to_int(binary_labels_in):
             aspect_int_arr = []
 
             if 1 in aspect[0]:
-                aspect_int = aspect[0].index(1)
+                aspect_int = [aspect[0].index(1)]
                 aspect_binary_arr.append(aspect_int)
                 aspect_int_arr.append(aspect_int)
             else:
-                aspect_binary_arr.append(0)
-                aspect_int_arr.append(0)
+                aspect_binary_arr.append([0])
+                aspect_int_arr.append([0])
 
             aspect_binary_arr.append(aspect[1])
 
             if 1 in aspect[1]:
-                aspect_int_arr.append(aspect[1].index(1))
+                aspect_int_arr.append([aspect[1].index(1)])
             else:
-                aspect_int_arr.append(0)
+                aspect_int_arr.append([0])
 
             # binary_sentiment_expanded.append(aspect_binary_arr)
             # int_pairs_expanded.append(aspect_int_arr)
@@ -364,4 +364,18 @@ def binary_to_int(binary_labels_in):
     return binary_sentiment, binary_sentiment_expanded, int_pairs, int_pairs_expanded
 
 
-# def isolate_binary_sentiment(sorted_labels_in):
+def isolate_binary_sentiment(sorted_labels_in):
+    isolated = []
+
+    for example in sorted_labels_in:
+        isolated.append(example[0])
+
+    return isolated
+
+def get_aspect_counts(input_labels):
+
+    counts = []
+    for sentence in input_labels:
+        counts.append(len(sentence))
+
+    return counts
