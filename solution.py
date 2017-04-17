@@ -23,7 +23,7 @@ text_eval, label_eval, eval_meta = preprocessing.load_data(evaluation_data_path)
 combined_text = text_train + text_eval
 
 print('Building vocabulary...')
-vocabulary = preprocessing.vocabulary_transform(combined_text)
+vocabulary, vocabulary_inv = preprocessing.vocabulary_transform(combined_text)
 print('Vocabulary size' + str(len(vocabulary)))
 
 train_label, label_index = preprocessing.binary_labels(label_train, return_index=True)

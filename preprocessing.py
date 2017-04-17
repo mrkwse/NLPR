@@ -234,15 +234,15 @@ def vocabulary_transform(text, max_length=None):
 
     word_counts = collections.Counter(itertools.chain(*words))
 
-    vocabulary = [x[0] for x in word_counts.most_common()]
-    vocabulary = list(sorted(vocabulary))
-    vocabulary.append('</NULL>')
+    vocabulary_inv = [x[0] for x in word_counts.most_common()]
+    vocabulary_inv = list(sorted(vocabulary_inv))
+    vocabulary_inv.append('</NULL>')
 
-    # vocabulary = {x: i for i, x in enumerate(vocabulary_inv)}
-    #
-    # max_i = max(vocabulary[x] for x in vocabulary)
-    # vocabulary['</NULL>'] =  max_i + 1
-    return vocabulary
+    vocabulary = {x: i for i, x in enumerate(vocabulary_inv)}
+
+    max_i = max(vocabulary[x] for x in vocabulary)
+    vocabulary['</NULL>'] =  max_i + 1
+    return [vocabulary, vocabulary_inv]
 
 # FIXME TODO FIXME TODO FIXME TODO PADDING
 def build_input_data(sentences, vocabulary, meta, pad=True):
@@ -253,12 +253,12 @@ def build_input_data(sentences, vocabulary, meta, pad=True):
         sentence = sentence.translate(translator)
         for word in sentence.split(' '):
             if word in vocabulary:
-                sen_data.append(vocabulary.index(word))
+                sen_data.append(vocabulary[word])
             else:
-                sen_data.append(vocabulary.index('</NULL>'))
+                sen_data.append(vocabulary['</NULL>'])
         yy = len(sentence.split(' '))
         while yy < meta['max_word_count']:
-            sen_data.append(vocabulary.index('</NULL>'))
+            sen_data.append(vocabulary['</NULL>'])
             yy += 1
         training_data.append(sen_data)
 
