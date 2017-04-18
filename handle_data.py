@@ -59,7 +59,7 @@ def load_data(data_file):
     return [input_text, output_labels, meta]
 
 
-def binary_labels(output_labels, return_index=False, label_list=None):
+def boolean_labels(output_labels, return_index=False, label_list=None):
     """
     Format label data to be binary arrays.
     """
@@ -122,14 +122,14 @@ def binary_sentiment(output_labels, return_index=False):
     else:
         return np.array(binary_sentiment)
 
-def binary_combined(output_labels, return_index=False):
+def boolean_combined(output_labels, return_index=False):
 
     binary_array = []
 
     # Setup sentiment index and empty array
     sentiment_index = ['positive', 'negative', 'other']
 
-    binary_labels = []
+    boolean_labels = []
 
     empty_sentiment = [0, 0, 0]
 
@@ -198,7 +198,7 @@ def return_batches(data, batch_size, num_epochs, shuffle=True):
 
 # x,y,z = load_data(data_file)
 #
-# binary_combined(y)
+# boolean_combined(y)
 
 ### FIXME
 if 0:

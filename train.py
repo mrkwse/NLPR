@@ -33,8 +33,8 @@ else:
 text_train, label_train, train_meta = handle_data.load_data(training_data_path)
 text_eval, label_eval, eval_meta = handle_data.load_data(evaluation_data_path)
 
-train_label, label_index = handle_data.binary_labels(label_train, return_index=True)
-eval_label = handle_data.binary_labels(label_eval, label_list = label_index)
+train_label, label_index = handle_data.boolean_labels(label_train, return_index=True)
+eval_label = handle_data.boolean_labels(label_eval, label_list = label_index)
 
 
 

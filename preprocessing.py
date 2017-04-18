@@ -49,7 +49,7 @@ def load_data(data_file):
     return [input_text, output_labels, meta]
 
 # Used to ...TODO
-def binary_labels(output_labels, return_index=False, label_list=None):
+def boolean_labels(output_labels, return_index=False, label_list=None):
     """
     Format label data to be binary arrays.
     """
@@ -91,41 +91,41 @@ def binary_labels(output_labels, return_index=False, label_list=None):
 
 
 # Used to ...TODO
-def binary_sentiment(output_labels, return_index=False):
-
-    sentiment_index = ['positive', 'neutral', 'negative']
-
-    binary_sentiment = []
-
-    empty_label = [0, 0, 0]
-
-    for element in output_labels:
-        element = []
-
-        for example in element:
-            if example != ['NULL#NULL']:
-                label = empty_label[:]
-                if example[1] in sentiment_index:
-                    label[sentiment_index.index(example[1])] = 1
-                else:
-                    raise Exception('Mysterious 4th sentiment class')
-                element.append(label)
-        binary_sentiment.append(element)
-
-    if return_index:
-        return np.array(binary_sentiment), sentiment_index
-    else:
-        return np.array(binary_sentiment)
+# def binary_sentiment(output_labels, return_index=False):
+#
+#     sentiment_index = ['positive', 'neutral', 'negative']
+#
+#     binary_sentiment = []
+#
+#     empty_label = [0, 0, 0]
+#
+#     for element in output_labels:
+#         element = []
+#
+#         for example in element:
+#             if example != ['NULL#NULL']:
+#                 label = empty_label[:]
+#                 if example[1] in sentiment_index:
+#                     label[sentiment_index.index(example[1])] = 1
+#                 else:
+#                     raise Exception('Mysterious 4th sentiment class')
+#                 element.append(label)
+#         binary_sentiment.append(element)
+#
+#     if return_index:
+#         return np.array(binary_sentiment), sentiment_index
+#     else:
+#         return np.array(binary_sentiment)
 
 # Returns [aspect, sentiment] terms in one-hot binary format
-def binary_combined(output_labels, return_index=False):
+def boolean_combined(output_labels, return_index=False):
 
     binary_array = []
 
     # Setup sentiment index and empty array
-    sentiment_index = ['positive', 'negative', 'other']
+    sentiment_index = ['positive', 'neutral', 'negative']
 
-    binary_labels = []
+    boolean_labels = []
 
     empty_sentiment = [0, 0, 0]
 
@@ -154,7 +154,7 @@ def binary_combined(output_labels, return_index=False):
 
             example[0][label_list.index(aspect[0])] = 1
             if aspect[1] == 'neutral' or 'conflict':
-                example[1][sentiment_index.index('other')] = 1
+                example[1][sentiment_index.index('neutral')] = 1
             else:
                 example[1][sentiment_index.index(aspect[1])] = 1
 
@@ -206,7 +206,7 @@ def vocabulary_transform(text, max_length=None):
 
 
 # Maps input data to integer lists of equal length (73)
-def build_input_data(sentences, vocabulary, meta, pad=True):
+def convert_text(sentences, vocabulary, meta, pad=True):
     training_data = []
     for sentence in sentences:
         sen_data = []
@@ -226,7 +226,7 @@ def build_input_data(sentences, vocabulary, meta, pad=True):
     return np.array(training_data)
 
 
-def binary_combined(labels_in, aspect_index):
+def boolean_combined(labels_in, aspect_index):
     output = []
 
     empty_aspect = []
@@ -279,13 +279,13 @@ def sort_array(array):
     return sorted_array
 
 # Returns integer index of one-hot binary list
-def binary_to_int(binary_labels_in):
+def boolean_to_int(boolean_labels_in):
     binary_sentiment = []
     binary_sentiment_expanded = []
     int_pairs = []
     int_pairs_expanded = []
 
-    for review in binary_labels_in:
+    for review in boolean_labels_in:
         binary_review = []
         int_review = []
 
@@ -327,7 +327,7 @@ def binary_to_int(binary_labels_in):
     return binary_sentiment, binary_sentiment_expanded, int_pairs, int_pairs_expanded
 
 # Strips aspects from labels
-def isolate_binary_sentiment(sorted_labels_in):
+def isolate_boolean_sentiment(sorted_labels_in):
     isolated = []
 
     for example in sorted_labels_in:

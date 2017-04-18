@@ -78,7 +78,7 @@ def remove_outlying_labels(output_labels):
     return output_labels
 
 
-def binary_labels(output_labels, return_index=False, label_list=None):
+def boolean_labels(output_labels, return_index=False, label_list=None):
     """
     Format label data to be binary arrays.
     """
@@ -143,14 +143,14 @@ def binary_sentiment(output_labels, return_index=False):
     else:
         return np.array(binary_sentiment)
 
-def binary_combined(output_labels, return_index=False):
+def boolean_combined(output_labels, return_index=False):
 
     binary_array = []
 
     # Setup sentiment index and empty array
     sentiment_index = ['positive', 'negative', 'other']
 
-    binary_labels = []
+    boolean_labels = []
 
     empty_sentiment = [0, 0, 0]
 
@@ -245,7 +245,7 @@ def vocabulary_transform(text, max_length=None):
     return [vocabulary]
 
 # FIXME TODO FIXME TODO FIXME TODO PADDING
-def build_input_data(sentences, vocabulary, meta, pad=True):
+def convert_text(sentences, vocabulary, meta, pad=True):
     training_data = []
     for sentence in sentences:
         sen_data = []
@@ -276,7 +276,7 @@ def build_input_data(sentences, vocabulary, meta, pad=True):
 
 # print remove_outlying_labels(y)
 #
-# yi = binary_labels(y)
+# yi = boolean_labels(y)
 #
 # # print yi
 # print len(x)
@@ -285,7 +285,7 @@ def build_input_data(sentences, vocabulary, meta, pad=True):
 
 
 #
-# binary_combined(y)
+# boolean_combined(y)
 
 ### FIXME
 # if 0:

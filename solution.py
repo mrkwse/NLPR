@@ -8,15 +8,15 @@ import numpy as np
 import preprocessing
 import prediction_tools as predict
 
-embed_dim = 50
-num_filters = 256
-aspect_filter_dimensions = [4,5,6]
-sentiment_filter_dimensions = [4,5]
+embed_dim = 64 # embedding dimensions
+num_filters = 256 # number of convolution filters
+aspect_filter_dimensions = [4,5,6] # Topology of convolution layers for aspect
+sentiment_filter_dimensions = [4,5] # Same for sentiment
 
-batch_size = 64
-num_epochs = 5
-num_sentiment_epochs = 7
-dropout_keep_prob = 0.3
+batch_size = 64 # Number of examples per batch processed
+num_epochs = 5 # Number of epochs to evaluate over for aspect
+num_sentiment_epochs = 7 # same for sentiment
+dropout_keep_prob = 0.3 # Probability value for dropout layers
 
 training_data_path = os.environ['TRAIN_PATH'] #/Users/mrkwse/Documents/University/NLPR/OA/Data/ABSA16_Laptops_Train_SB1_v2.xml
 evaluation_data_path = os.environ['EVAL_PATH'] #/Users/mrkwse/Documents/University/NLPR/OA/Data/EN_LAPT_SB1_TEST_.xml.gold
@@ -32,35 +32,41 @@ vocab_size = len(vocabulary)
 print('Vocabulary size: ' + str(vocab_size))
 
 
+# Convert string aspect labels to boolean labels
+train_label, label_index = preprocessing.boolean_labels(label_train, return_index=True)
+eval_label = preprocessing.boolean_labels(label_eval, label_list=label_index)
 
-train_label, label_index = preprocessing.binary_labels(label_train, return_index=True)
-eval_label = preprocessing.binary_labels(label_eval, label_list = label_index)
+# Build vector representation of text inputs using vocabulary
+training_inputs = preprocessing.convert_text(text_train, vocabulary, train_meta)
+evaluation_inputs = preprocessing.convert_text(text_eval, vocabulary, train_meta)
 
-training_inputs = preprocessing.build_input_data(text_train, vocabulary, train_meta)
-evaluation_inputs = preprocessing.build_input_data(text_eval, vocabulary, train_meta)
+training_labels_boolean = preprocessing.boolean_combined(label_train, label_index)
+train_boolean_sentiment, train_boolean_sentiment_expanded, train_int_pairs, train_int_pairs_expanded = preprocessing.boolean_to_int(training_labels_boolean)
 
-training_labels_binary = preprocessing.binary_combined(label_train, label_index)
-train_binary_sentiment, train_binary_sentiment_expanded, train_int_pairs, train_int_pairs_expanded = preprocessing.binary_to_int(training_labels_binary)
+evaluation_labels_boolean = preprocessing.boolean_combined(label_eval, label_index)
+eval_boolean_sentiment, eval_boolean_sentiment_expanded, eval_int_pairs, eval_int_pairs_expanded = preprocessing.boolean_to_int(evaluation_labels_boolean)
 
-evaluation_labels_binary = preprocessing.binary_combined(label_eval, label_index)
-eval_binary_sentiment, eval_binary_sentiment_expanded, eval_int_pairs, eval_int_pairs_expanded = preprocessing.binary_to_int(evaluation_labels_binary)
-
-del train_binary_sentiment, eval_binary_sentiment
-del train_int_pairs_expanded, eval_int_pairs_expanded 
+# Clear unused variables (remained incase of topology changes)
+del train_boolean_sentiment, eval_boolean_sentiment
+del train_int_pairs_expanded, eval_int_pairs_expanded
 
 print('Preprocessing complete.')
 
 aspect_inputs = layers.Input(shape=(training_inputs.shape[1],), name="aspect_input")
 
+print('===aspect===')
+print('Input: ' + str(aspect_inputs.shape))
 embedded_chars = layers.Embedding(
                     input_dim = vocab_size,
                     output_dim = embed_dim,
                     input_length = training_inputs.shape[1]
                  )(aspect_inputs)
+print('Embedding: ' + str(embedded_chars.shape))
+
 reshape = layers.core.Reshape(
                 target_shape = (training_inputs.shape[1],embed_dim,1)
           )(embedded_chars)
-
+print('Reshape: ' + str(reshape.shape))
 
 pooled_aspect_outputs = []
 
@@ -74,7 +80,7 @@ for i, filter_size in enumerate(aspect_filter_dimensions):
         name = "aspect_conv_" + str(i),
         activation = 'tanh'
     )(reshape)
-
+    print('aspect_conv_' + str(i) + ': ' + str(aspect_conv.shape))
 
     aspect_pool = layers.pooling.MaxPooling2D(
         pool_size = (training_inputs.shape[1] - filter_size + 1, 1),
@@ -83,19 +89,26 @@ for i, filter_size in enumerate(aspect_filter_dimensions):
         name = 'aspect_pool_' + str(i),
         data_format = "channels_last"
     )(aspect_conv)
+    print('aspect_pool_' + str(i) + ': ' + str(aspect_pool.shape))
 
     pooled_aspect_outputs.append(aspect_pool)
 
+print('pooled_out: ' + str(pooled_aspect_outputs))
 combined_pool = layers.Concatenate(axis=1)(pooled_aspect_outputs)
 flat_aspect = layers.Flatten()(combined_pool)
 
+print('Concat: ' + str(combined_pool.shape))
+print('Flatten: '+  str(flat_aspect.shape))
+
 aspect_drop = layers.Dropout(rate=dropout_keep_prob, name="dropout")(flat_aspect)
+print('Dropout: ' + str(aspect_drop.shape))
 
 aspect_output = layers.Dense(
                     train_label.shape[1],
                     activation='sigmoid',
                     name='main_output'
                 )(aspect_drop)
+print('Dense: ' + str(aspect_output.shape))
 
 aspect_model = Model(inputs=aspect_inputs, outputs=aspect_output)
 
@@ -106,6 +119,8 @@ aspect_model.compile(
     metrics = ['accuracy']
 )
 
+
+# Configure logging for TensorBoard
 timestamp = str(int(time.time()))
 out_dir = os.path.abspath(os.path.join(os.path.curdir, "output", timestamp))
 print("Saving to {}".format(out_dir))
@@ -166,8 +181,8 @@ predicted_aspect_eval_in = predict.add_class_to_text(eval_classes_i,
                                                      evaluation_aspect_counts)
 
 # Isolate sentiment classes from training/eval labels
-sentiment_training_output = preprocessing.isolate_binary_sentiment(train_binary_sentiment_expanded)
-sentiment_evaluation_output = preprocessing.isolate_binary_sentiment(eval_binary_sentiment_expanded)
+sentiment_training_output = preprocessing.isolate_boolean_sentiment(train_boolean_sentiment_expanded)
+sentiment_evaluation_output = preprocessing.isolate_boolean_sentiment(eval_boolean_sentiment_expanded)
 
 sentiment_inputs = layers.Input(
                         shape=(training_inputs.shape[1] + 1,),
@@ -191,8 +206,8 @@ reshaped_sent = layers.core.Reshape(
 
 sentiment_total_pooled = []
 
+# Allows for multiple convolutions of differing dimensions
 for i, filter_size in enumerate(sentiment_filter_dimensions):
-    filter_shape = [filter_size, embed_dim, 1, num_filters]
 
     sentiment_conv = layers.convolutional.Conv2D(
         filters = num_filters,
