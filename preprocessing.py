@@ -11,6 +11,7 @@ import sys
 # Fix absolute path
 data_file = '/Users/mrkwse/Documents/University/NLPR/OA/Data/ABSA16_Laptops_Train_SB1_v2.xml'
 
+# Loads XML file as an ElementTree
 def load_data(data_file):
     tree = ET.parse(data_file)
     root = tree.getroot()
@@ -21,8 +22,7 @@ def load_data(data_file):
 
     # Review = Review in root = Reviews
     for review in root:
-        # sentence_data = []
-        #
+
         for sentence in review.findall('sentences/sentence'):
             for text in sentence.findall('text'):
                 input_text.append(text.text)
@@ -48,6 +48,7 @@ def load_data(data_file):
 
     return [input_text, output_labels, meta]
 
+# FIXME: UNUSED
 def remove_outlying_labels(output_labels):
 
     # pruned_labels = output_labels
@@ -77,7 +78,7 @@ def remove_outlying_labels(output_labels):
 
     return output_labels
 
-
+# Used to ...TODO
 def binary_labels(output_labels, return_index=False, label_list=None):
     """
     Format label data to be binary arrays.
@@ -111,9 +112,6 @@ def binary_labels(output_labels, return_index=False, label_list=None):
                 labels_binary[-1] = empty_label[:]
             else:
                 labels_binary[-1][label_list.index("OTHER#OTHER")] = 1
-                # label_index[quality[0]] = label_index['max'] + 1
-                # label_index['max'] += 1
-                # labels_binary[-1][label_index[quality[0]]] = 1
 
     if return_index:
         # label list acts as a lookup incase of printing classification results
@@ -122,7 +120,7 @@ def binary_labels(output_labels, return_index=False, label_list=None):
         return np.array(labels_binary)
 
 
-
+# Used to ...TODO
 def binary_sentiment(output_labels, return_index=False):
 
     sentiment_index = ['positive', 'neutral', 'negative']
@@ -149,6 +147,7 @@ def binary_sentiment(output_labels, return_index=False):
     else:
         return np.array(binary_sentiment)
 
+# Returns [aspect, sentiment] terms in one-hot binary format
 def binary_combined(output_labels, return_index=False):
 
     binary_array = []
@@ -183,7 +182,6 @@ def binary_combined(output_labels, return_index=False):
         for aspect in review:
             example = [empty_label[:], empty_sentiment[:]]
 
-            # Probably if/except these
             example[0][label_list.index(aspect[0])] = 1
             if aspect[1] == 'neutral' or 'conflict':
                 example[1][sentiment_index.index('other')] = 1
@@ -195,17 +193,15 @@ def binary_combined(output_labels, return_index=False):
         binary_array.append(element)
 
 
-    # z = np.array(binary_array)
 
-    # print z.shape
     return np.array(binary_array)
 
-# def binary_eval(output_labels, label_list):
 
 
 # http://stackoverflow.com/questions/34293875/how-to-remove-punctuation-marks-from-a-string-in-python-3-x-using-translate
 translator = str.maketrans('','', string.punctuation)
 
+# Splits strings into lists of word strings
 def word_lists(text):
     output = []
 
@@ -216,26 +212,30 @@ def word_lists(text):
     return output
 
 
-# TODO Expand FOR loops
+# TODO FIXME TODO FIXME TODO FIXME
+# Creates a map between words that occur in the data to integers
 def vocabulary_transform(text, max_length=None):
 
     words = word_lists(text)
 
     word_counts = collections.Counter(itertools.chain(*words))
 
-    vocabulary_inv = [x[0] for x in word_counts.most_common()]
-    # for word in word_counts.most_common():
-    #     vocabulary_inv.append(word[0])
+    vocabulary_inv = []
+    for word in word_counts.most_common():
+        vocabulary_inv.append(word[0])
     vocabulary_inv = list(sorted(vocabulary_inv))
-    vocabulary_inv.append('</NULL>')
 
-    vocabulary = {x: i for i, x in enumerate(vocabulary_inv)}
+    vocabulary = {}
+
+    for i, x in enumerate(vocabulary_inv):
+        vocabulary[x] = i
 
     max_i = max(vocabulary[x] for x in vocabulary)
     vocabulary['</NULL>'] =  max_i + 1
-    return [vocabulary, vocabulary_inv]
+    return vocabulary
 
-# FIXME TODO FIXME TODO FIXME TODO PADDING
+
+# Maps input data to integer lists of equal length (73)
 def build_input_data(sentences, vocabulary, meta, pad=True):
     training_data = []
     for sentence in sentences:
@@ -255,11 +255,6 @@ def build_input_data(sentences, vocabulary, meta, pad=True):
 
     return np.array(training_data)
 
-def sort_array(array):
-    sorted_array = []
-
-    while len(array) > 0:
-        min
 
 def binary_combined(labels_in, aspect_index):
     output = []
@@ -296,7 +291,7 @@ def binary_combined(labels_in, aspect_index):
 
     return(np.array(output))
 
-
+# Sorts elements in an array according to first subelement int value
 def sort_array(array):
     sorted_array = []
 
@@ -313,6 +308,7 @@ def sort_array(array):
 
     return sorted_array
 
+# Returns integer index of one-hot binary list
 def binary_to_int(binary_labels_in):
     binary_sentiment = []
     binary_sentiment_expanded = []
@@ -342,8 +338,6 @@ def binary_to_int(binary_labels_in):
             else:
                 aspect_int_arr.append([0])
 
-            # binary_sentiment_expanded.append(aspect_binary_arr)
-            # int_pairs_expanded.append(aspect_int_arr)
 
             binary_review.append(aspect_binary_arr)
             int_review.append(aspect_int_arr)
@@ -358,12 +352,11 @@ def binary_to_int(binary_labels_in):
 
         binary_sentiment.append(binary_review)
         int_pairs.append(int_review)
-        # binary_sentiment = np.append(binary_sentiment, binary_review, axis=0)
-        # int_pairs = np.append(int_pairs, int_review, axis=0)
+
 
     return binary_sentiment, binary_sentiment_expanded, int_pairs, int_pairs_expanded
 
-
+# Strips aspects from labels
 def isolate_binary_sentiment(sorted_labels_in):
     isolated = []
 
@@ -372,6 +365,7 @@ def isolate_binary_sentiment(sorted_labels_in):
 
     return isolated
 
+# Counts number of aspects per sentence to split predictions
 def get_aspect_counts(input_labels):
 
     counts = []

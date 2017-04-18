@@ -14,7 +14,8 @@ aspect_filter_dimensions = [3,4,5]
 sentiment_filter_dimensions = [2,4]
 
 batch_size = 64
-num_epochs = 5
+num_epochs = 10
+num_sentiment_epochs = 5
 dropout_keep_prob = 0.1
 
 training_data_path = os.environ['TRAIN_PATH'] #/Users/mrkwse/Documents/University/NLPR/OA/Data/ABSA16_Laptops_Train_SB1_v2.xml
@@ -29,7 +30,7 @@ combined_text = text_train + text_eval
 label_sentiment_train = preprocessing.binary_sentiment(label_train)
 
 print('Building vocabulary...')
-vocabulary, vocabulary_inv = preprocessing.vocabulary_transform(combined_text)
+vocabulary = preprocessing.vocabulary_transform(combined_text)
 print('Vocabulary size: ' + str(len(vocabulary)))
 vocab_size = len(vocabulary) + 1
 
@@ -38,7 +39,7 @@ vocab_size = len(vocabulary) + 1
 train_label, label_index = preprocessing.binary_labels(label_train, return_index=True)
 eval_label = preprocessing.binary_labels(label_eval, label_list = label_index)
 
-
+print(train_label.shape[1])
 training_inputs = preprocessing.build_input_data(text_train, vocabulary, train_meta)
 evaluation_inputs = preprocessing.build_input_data(text_eval, vocabulary, train_meta)
 
@@ -90,32 +91,32 @@ for i, filter_size in enumerate(aspect_filter_dimensions):
     pooled_aspect_outputs.append(aspect_pool)
 
 combined_pool = layers.Concatenate(axis=1)(pooled_aspect_outputs)
-flat = layers.Flatten()(combined_pool)
+flat_aspect = layers.Flatten()(combined_pool)
 
-h_drop = layers.Dropout(rate=dropout_keep_prob, name="dropout")(flat)
+h_drop = layers.Dropout(rate=dropout_keep_prob, name="dropout")(flat_aspect)
 
 aspect_output = layers.Dense(train_label.shape[1], activation='sigmoid', name='main_output')(h_drop)
 
-# aspect_model = Model(inputs=aspect_inputs, outputs=aspect_output)
-#
-# print('Compiling model...')
-# aspect_model.compile(
-#     optimizer = 'Adam',
-#     loss = 'binary_crossentropy',
-#     metrics = ['accuracy']
-# )
-#
-# timestamp = str(int(time.time()))
-# out_dir = os.path.abspath(os.path.join(os.path.curdir, "output", timestamp))
-# print("Saving to {}".format(out_dir))
-# checkpoint_dir = os.path.abspath(os.path.join(out_dir, "checkpoints"))
-# if not os.path.exists(checkpoint_dir):
-#     os.makedirs(checkpoint_dir)
-# checkpoint_prefix = os.path.join(checkpoint_dir, "model")
-# checkpoints = callbacks.ModelCheckpoint(checkpoint_prefix + 'weights.{epoch:02d}.hdf5', monitor='val_loss,val_acc', verbose=0, save_best_only=False,mode='auto')
-# board = callbacks.TensorBoard(log_dir=out_dir)
-# print('Training aspect model...')
-# aspect_model.fit(training_inputs, train_label, epochs = num_epochs, batch_size = batch_size, callbacks=[checkpoints, board], validation_data=(evaluation_inputs, eval_label))
+aspect_model = Model(inputs=aspect_inputs, outputs=aspect_output)
+
+print('Compiling model...')
+aspect_model.compile(
+    optimizer = 'Adam',
+    loss = 'binary_crossentropy',
+    metrics = ['accuracy']
+)
+
+timestamp = str(int(time.time()))
+out_dir = os.path.abspath(os.path.join(os.path.curdir, "output", timestamp))
+print("Saving to {}".format(out_dir))
+checkpoint_dir = os.path.abspath(os.path.join(out_dir, "checkpoints"))
+if not os.path.exists(checkpoint_dir):
+    os.makedirs(checkpoint_dir)
+checkpoint_prefix = os.path.join(checkpoint_dir, "model")
+checkpoints = callbacks.ModelCheckpoint(checkpoint_prefix + 'weights.{epoch:02d}.hdf5', monitor='val_loss,val_acc', verbose=0, save_best_only=False,mode='auto')
+board = callbacks.TensorBoard(log_dir=out_dir)
+print('Training aspect model...')
+aspect_model.fit(training_inputs, train_label, epochs = num_epochs, batch_size = batch_size, callbacks=[checkpoints, board], validation_data=(evaluation_inputs, eval_label))
 
 train_predictions = aspect_model.predict(training_inputs, batch_size = batch_size)
 evaluation_predictions = aspect_model.predict(evaluation_inputs, batch_size = batch_size)
@@ -141,7 +142,6 @@ predicted_aspect_eval_in = predict.add_class_to_text(eval_classes_i,
 predicted_aspect_train_in = np.array(predicted_aspect_train_in)
 predicted_aspect_eval_in = np.array(predicted_aspect_eval_in)
 
-print(predicted_aspect_train_in.shape)
 
 sentiment_training_output = preprocessing.isolate_binary_sentiment(train_binary_sentiment_expanded)
 sentiment_evaluation_output = preprocessing.isolate_binary_sentiment(eval_binary_sentiment_expanded)
@@ -169,7 +169,8 @@ for i, filter_size in enumerate(sentiment_filter_dimensions):
         kernel_size = (filter_size,embed_dim),
         strides = (1,1),
         padding = 'valid',
-        name = "sentiment_conv_" + str(i)
+        name = "sentiment_conv_" + str(i),
+        activation = 'relu'
     )(reshaped_sent)
 
 
@@ -181,40 +182,44 @@ for i, filter_size in enumerate(sentiment_filter_dimensions):
         data_format = "channels_last"
     )(sentiment_conv)
 
-    sentiment_total_pooled.append(aspect_pool)
+    sentiment_total_pooled.append(sentiment_pool)
 
-combined_pool = layers.Concatenate(axis=1)(sentiment_total_pooled)
-flat = layers.Flatten()(combined_pool)
+combined_sentiment_pool = layers.Concatenate(axis=1)(sentiment_total_pooled)
+flat_sentiment = layers.Flatten()(combined_sentiment_pool)
 
-h_drop = layers.Dropout(rate=dropout_keep_prob, name="dropout")(flat)
+sentiment_drop = layers.Dropout(rate=dropout_keep_prob, name="dropout")(flat_sentiment)
 
-sentiment_output = layers.Dense(sentiment_training_output.shape[1], activation='sigmoid', name='main_output')(h_drop)
+sentiment_output = layers.Dense(sentiment_training_output.shape[1], activation='sigmoid', name='main_output')(sentiment_drop)
 
 
-aspect_model = Model(inputs=aspect_inputs, outputs=[aspect_output, sentiment_output])
+sentiment_model = Model(inputs=sentiment_inputs, outputs=sentiment_output)
 
-print('Compiling model...')
-aspect_model.compile(
+
+print('Compiling sentiment model...')
+sentiment_model.compile(
     optimizer = 'Adam',
     loss = 'binary_crossentropy',
     metrics = ['accuracy']
 )
 
-timestamp = str(int(time.time()))
-out_dir = os.path.abspath(os.path.join(os.path.curdir, "output", timestamp))
-print("Saving to {}".format(out_dir))
-checkpoint_dir = os.path.abspath(os.path.join(out_dir, "checkpoints"))
-if not os.path.exists(checkpoint_dir):
-    os.makedirs(checkpoint_dir)
-checkpoint_prefix = os.path.join(checkpoint_dir, "model")
-checkpoints = callbacks.ModelCheckpoint(checkpoint_prefix + 'weights.{epoch:02d}.hdf5', monitor='val_loss,val_acc', verbose=0, save_best_only=False,mode='auto')
-board = callbacks.TensorBoard(log_dir=out_dir)
-print('Training aspect model...')
-aspect_model.fit(training_inputs, outputs=[train_label, sentiment_training_output], epochs = num_epochs, batch_size = batch_size, callbacks=[checkpoints, board], validation_data=(evaluation_inputs, [eval_label, eval_training_output]))
+sentiment_checkpoint_prefix = os.path.join(checkpoint_dir, "sentiment_model")
+sentiment_checkpoints = callbacks.ModelCheckpoint(sentiment_checkpoint_prefix + 'weights.{epoch:02d}.hdf5', monitor='val_loss,val_acc', verbose=0, save_best_only=False,mode='auto')
+sentiment_board = callbacks.TensorBoard(log_dir=out_dir)
+print('Training sentiment model...')
+sentiment_model.fit(
+    predicted_aspect_train_in,
+    sentiment_training_output,
+    epochs = num_sentiment_epochs,
+    batch_size = batch_size,
+    callbacks=[sentiment_checkpoints, sentiment_board],
+    validation_data=(predicted_aspect_eval_in, sentiment_evaluation_output))
+# aspect_model.fit(training_inputs, train_label, epochs = num_epochs, batch_size = batch_size, callbacks=[checkpoints, board], validation_data=(evaluation_inputs, eval_label))
 
+# train_predictions = aspect_model.predict(training_inputs, batch_size = batch_size)
+sentiment_predictions = sentiment_model.predict(predicted_aspect_train_in)
 
-# sentiment_model = Model(inputs=sentiment_inputs, outputs=sentiment_output)
-
+print(sentiment_predictions)
+print(sentiment_training_output)
 #
 
 # actual_classes = []
