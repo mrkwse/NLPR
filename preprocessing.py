@@ -48,36 +48,6 @@ def load_data(data_file):
 
     return [input_text, output_labels, meta]
 
-# FIXME: UNUSED
-def remove_outlying_labels(output_labels):
-
-    # pruned_labels = output_labels
-
-    label_list = {"OTHER#OTHER": 0}
-
-    for element in output_labels:
-        for quality in element:
-            if quality[0] in label_list:
-                label_list[quality[0]] += 1
-            else:
-                label_list[quality[0]] = 1
-
-
-
-    # print label_list
-
-    xx = 0
-
-    while xx < len(output_labels):
-        yy = 0
-        while yy < len(output_labels[xx]):
-            if label_list[output_labels[xx][yy][0]] < 20:
-                output_labels[xx][yy][0] = "OTHER#OTHER"
-            yy += 1
-        xx += 1
-
-    return output_labels
-
 # Used to ...TODO
 def binary_labels(output_labels, return_index=False, label_list=None):
     """
@@ -361,9 +331,9 @@ def isolate_binary_sentiment(sorted_labels_in):
     isolated = []
 
     for example in sorted_labels_in:
-        isolated.append(example[0])
+        isolated.append(example[1])
 
-    return isolated
+    return np.array(isolated)
 
 # Counts number of aspects per sentence to split predictions
 def get_aspect_counts(input_labels):

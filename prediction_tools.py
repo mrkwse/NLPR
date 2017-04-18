@@ -34,18 +34,4 @@ def add_class_to_text(predicted_classes, text_input, aspect_counts):
             aspect += 1
         sentence_no += 1
 
-    return predicted_aspect_text_in
-
-
-def add_known_class(classes, text_input, aspect_counts):
-
-    aspect_text_in = []
-    # for sentence in classes:
-    #     for aspect in setence:
-
-    # for sentence in predicted_classes:
-    #     if len(sentence) == 0:
-    #         predicted_aspect_text_in.append(np.append(text_input[sentence_no], 0))
-    #     for label in sentence:
-    #         predicted_aspect_text_in.append(np.append(text_input[sentence_no], label))
-    #     sentence_no += 0
+    return np.array(predicted_aspect_text_in)
