@@ -228,7 +228,7 @@ def word_lists(text):
 
     return output
 
-def vocabulary_transform(text, max_length=None):
+def vocabulary_compile(text, max_length=None):
 
     words = word_lists(text)
 

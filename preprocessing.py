@@ -90,32 +90,6 @@ def boolean_labels(output_labels, return_index=False, label_list=None):
         return np.array(labels_binary)
 
 
-# Used to ...TODO
-# def binary_sentiment(output_labels, return_index=False):
-#
-#     sentiment_index = ['positive', 'neutral', 'negative']
-#
-#     binary_sentiment = []
-#
-#     empty_label = [0, 0, 0]
-#
-#     for element in output_labels:
-#         element = []
-#
-#         for example in element:
-#             if example != ['NULL#NULL']:
-#                 label = empty_label[:]
-#                 if example[1] in sentiment_index:
-#                     label[sentiment_index.index(example[1])] = 1
-#                 else:
-#                     raise Exception('Mysterious 4th sentiment class')
-#                 element.append(label)
-#         binary_sentiment.append(element)
-#
-#     if return_index:
-#         return np.array(binary_sentiment), sentiment_index
-#     else:
-#         return np.array(binary_sentiment)
 
 # Returns [aspect, sentiment] terms in one-hot binary format
 def boolean_combined(output_labels, return_index=False):
@@ -184,7 +158,7 @@ def word_lists(text):
 
 # TODO FIXME TODO FIXME TODO FIXME
 # Creates a map between words that occur in the data to integers
-def vocabulary_transform(text, max_length=None):
+def vocabulary_compile(text, max_length=None):
 
     words = word_lists(text)
 

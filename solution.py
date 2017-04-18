@@ -12,11 +12,11 @@ embed_dim = 64 # embedding dimensions
 num_filters = 256 # number of convolution filters
 aspect_filter_dimensions = [4,5,6] # Topology of convolution layers for aspect
 sentiment_filter_dimensions = [4,5] # Same for sentiment
+dropout_keep_prob = 0.1 # Probability value for dropout layers
 
 batch_size = 64 # Number of examples per batch processed
 num_epochs = 5 # Number of epochs to evaluate over for aspect
 num_sentiment_epochs = 7 # same for sentiment
-dropout_keep_prob = 0.3 # Probability value for dropout layers
 
 training_data_path = os.environ['TRAIN_PATH'] #/Users/mrkwse/Documents/University/NLPR/OA/Data/ABSA16_Laptops_Train_SB1_v2.xml
 evaluation_data_path = os.environ['EVAL_PATH'] #/Users/mrkwse/Documents/University/NLPR/OA/Data/EN_LAPT_SB1_TEST_.xml.gold
@@ -27,7 +27,7 @@ text_eval, label_eval, eval_meta = preprocessing.load_data(evaluation_data_path)
 
 print('Building vocabulary...')
 # Build vocabulary from combined text
-vocabulary = preprocessing.vocabulary_transform(text_train + text_eval)
+vocabulary = preprocessing.vocabulary_compile(text_train + text_eval)
 vocab_size = len(vocabulary)
 print('Vocabulary size: ' + str(vocab_size))
 
@@ -54,19 +54,15 @@ print('Preprocessing complete.')
 
 aspect_inputs = layers.Input(shape=(training_inputs.shape[1],), name="aspect_input")
 
-print('===aspect===')
-print('Input: ' + str(aspect_inputs.shape))
 embedded_chars = layers.Embedding(
                     input_dim = vocab_size,
                     output_dim = embed_dim,
                     input_length = training_inputs.shape[1]
                  )(aspect_inputs)
-print('Embedding: ' + str(embedded_chars.shape))
 
 reshape = layers.core.Reshape(
                 target_shape = (training_inputs.shape[1],embed_dim,1)
           )(embedded_chars)
-print('Reshape: ' + str(reshape.shape))
 
 pooled_aspect_outputs = []
 
@@ -80,7 +76,6 @@ for i, filter_size in enumerate(aspect_filter_dimensions):
         name = "aspect_conv_" + str(i),
         activation = 'tanh'
     )(reshape)
-    print('aspect_conv_' + str(i) + ': ' + str(aspect_conv.shape))
 
     aspect_pool = layers.pooling.MaxPooling2D(
         pool_size = (training_inputs.shape[1] - filter_size + 1, 1),
@@ -89,30 +84,23 @@ for i, filter_size in enumerate(aspect_filter_dimensions):
         name = 'aspect_pool_' + str(i),
         data_format = "channels_last"
     )(aspect_conv)
-    print('aspect_pool_' + str(i) + ': ' + str(aspect_pool.shape))
 
     pooled_aspect_outputs.append(aspect_pool)
 
-print('pooled_out: ' + str(pooled_aspect_outputs))
 combined_pool = layers.Concatenate(axis=1)(pooled_aspect_outputs)
 flat_aspect = layers.Flatten()(combined_pool)
 
-print('Concat: ' + str(combined_pool.shape))
-print('Flatten: '+  str(flat_aspect.shape))
-
 aspect_drop = layers.Dropout(rate=dropout_keep_prob, name="dropout")(flat_aspect)
-print('Dropout: ' + str(aspect_drop.shape))
 
 aspect_output = layers.Dense(
                     train_label.shape[1],
                     activation='sigmoid',
                     name='main_output'
                 )(aspect_drop)
-print('Dense: ' + str(aspect_output.shape))
 
 aspect_model = Model(inputs=aspect_inputs, outputs=aspect_output)
 
-print('Compiling model...')
+print('Compiling aspect model...')
 aspect_model.compile(
     optimizer = 'Adam',
     loss = 'binary_crossentropy',
@@ -127,7 +115,7 @@ print("Saving to {}".format(out_dir))
 checkpoint_dir = os.path.abspath(os.path.join(out_dir, "checkpoints"))
 if not os.path.exists(checkpoint_dir):
     os.makedirs(checkpoint_dir)
-checkpoint_prefix = os.path.join(checkpoint_dir, "model")
+checkpoint_prefix = os.path.join(checkpoint_dir, "aspect/aspect_model")
 
 checkpoints = callbacks.ModelCheckpoint(
     checkpoint_prefix + 'weights.{epoch:02d}.hdf5',
@@ -254,7 +242,7 @@ sentiment_model.compile(
     metrics = ['accuracy']
 )
 
-sentiment_checkpoint_prefix = os.path.join(checkpoint_dir, "sentiment_model")
+sentiment_checkpoint_prefix = os.path.join(checkpoint_dir, "sentiment/sentiment_model")
 
 sentiment_checkpoints = callbacks.ModelCheckpoint(
         sentiment_checkpoint_prefix + 'weights.{epoch:02d}.hdf5',
